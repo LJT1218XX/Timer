@@ -1,10 +1,11 @@
-import { app, BrowserWindow, ipcMain, Notification } from 'electron'
+import { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 
 // The built directory structure
 //
@@ -25,13 +26,29 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
 let win: BrowserWindow | null
+let isQuitting = false
 
 function createWindow() {
   win = new BrowserWindow({
+    frame: false,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
+    
+  })
+
+
+win.on('maximize', ()=> win?.webContents.send('window-state-changed', true))
+win.on('unmaximize', ()=> win?.webContents.send('window-state-changed', false))
+
+win.setMenuBarVisibility(false)
+
+  win.on('close', (event) =>{
+    if (!isQuitting) {
+      event.preventDefault()
+      win?.hide()
+    }
   })
 
   // Test active push message to Renderer-process.
@@ -47,14 +64,45 @@ function createWindow() {
   }
 }
 
+let tray: Tray | null = null
+
+function createTray(){
+  const iconPath = path.join(process.env.VITE_PUBLIC!, 'electron-vite.svg')
+  const icon = nativeImage.createFromPath(iconPath).resize({width: 16, height: 16})
+
+  tray = new Tray(icon)
+  tray.setToolTip('🍅 番茄钟')
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '显示窗口',
+      click: () => win?.show()
+    },
+    {
+      label: '退出',
+      click: () => {
+        isQuitting = true
+        app.quit()
+      }      
+    }
+  ])
+
+  tray.setContextMenu(contextMenu)
+
+  tray.on('double-click', () => {
+    win?.show()
+  })
+
+}
+
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-    win = null
-  }
+app.on('window-all-closed', () => {})
+
+app.on('before-quit', () => {
+  isQuitting = true
+  tray = null
 })
 
 app.on('activate', () => {
@@ -67,8 +115,24 @@ app.on('activate', () => {
 app.setAppUserModelId('com.pomodoro.timer')
 
 ipcMain.on('show-notification', (_event, { title, body }) => {
-  console.log('收到通知请求:', title)   
-  new Notification({ title, body }).show()
+  const [win] = BrowserWindow.getAllWindows()
+  if (win) {
+    win.webContents.executeJavaScript(`new Notification('${title}', { body: '${body}' })`)
+  }
 })
 
-app.whenReady().then(createWindow)
+ipcMain.on('window-minimize', ()=> win?.minimize())
+ipcMain.on('window-maximize', ()=> {
+  if (win?.isMaximized()){
+    win.unmaximize()
+  } else {
+    win?.maximize()
+  }
+})
+ipcMain.on('window-close', ()=> win?.close())
+
+
+app.whenReady().then(() =>{
+  createWindow()
+  createTray()
+})
