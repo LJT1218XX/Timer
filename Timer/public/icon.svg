@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect x="0" y="0" width="512" height="512" fill="#fafafa"/>
+  <!-- 番茄 -->
+  <ellipse cx="256" cy="275" rx="160" ry="170" fill="#ff4757"/>
+  <!-- 叶子 -->
+  <path d="M256 120 Q260 85 250 55" stroke="#2ed573" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M250 85 Q220 75 200 90 Q220 95 245 95" fill="#2ed573"/>
+  <path d="M260 87 Q290 75 310 90 Q290 95 265 97" fill="#2ed573"/>
+</svg>

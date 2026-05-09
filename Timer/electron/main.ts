@@ -29,7 +29,7 @@ let isQuitting = false
 function createWindow() {
   win = new BrowserWindow({
     frame: false,
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC, 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
@@ -65,7 +65,7 @@ win.setMenuBarVisibility(false)
 let tray: Tray | null = null
 
 function createTray(){
-  const iconPath = path.join(process.env.VITE_PUBLIC!, 'electron-vite.svg')
+  const iconPath = path.join(process.env.VITE_PUBLIC!, 'icon.ico')
   const icon = nativeImage.createFromPath(iconPath).resize({width: 16, height: 16})
 
   tray = new Tray(icon)

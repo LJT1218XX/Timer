@@ -1,67 +1,97 @@
-import { app as t, BrowserWindow as r, ipcMain as s, nativeImage as h, Tray as _, Menu as v } from "electron";
-import { fileURLToPath as T } from "node:url";
-import o from "node:path";
-const p = o.dirname(T(import.meta.url));
-process.env.APP_ROOT = o.join(p, "..");
-const c = process.env.VITE_DEV_SERVER_URL, E = o.join(process.env.APP_ROOT, "dist-electron"), f = o.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = c ? o.join(process.env.APP_ROOT, "public") : f;
-let e, d = !1;
-function u() {
-  e = new r({
-    frame: !1,
-    icon: o.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+import { app, BrowserWindow, ipcMain, nativeImage, Tray, Menu } from "electron";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
+process.env.APP_ROOT = path.join(__dirname$1, "..");
+const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+let win;
+let isQuitting = false;
+function createWindow() {
+  win = new BrowserWindow({
+    frame: false,
+    icon: path.join(process.env.VITE_PUBLIC, "icon.ico"),
     webPreferences: {
-      preload: o.join(p, "preload.mjs")
+      preload: path.join(__dirname$1, "preload.mjs")
     }
-  }), e.on("maximize", () => e == null ? void 0 : e.webContents.send("window-state-changed", !0)), e.on("unmaximize", () => e == null ? void 0 : e.webContents.send("window-state-changed", !1)), e.setMenuBarVisibility(!1), e.on("close", (i) => {
-    d || (i.preventDefault(), e == null || e.hide());
-  }), e.webContents.on("did-finish-load", () => {
-    e == null || e.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  }), c ? e.loadURL(c) : e.loadFile(o.join(f, "index.html"));
+  });
+  win.on("maximize", () => win == null ? void 0 : win.webContents.send("window-state-changed", true));
+  win.on("unmaximize", () => win == null ? void 0 : win.webContents.send("window-state-changed", false));
+  win.setMenuBarVisibility(false);
+  win.on("close", (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      win == null ? void 0 : win.hide();
+    }
+  });
+  win.webContents.on("did-finish-load", () => {
+    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  });
+  if (VITE_DEV_SERVER_URL) {
+    win.loadURL(VITE_DEV_SERVER_URL);
+  } else {
+    win.loadFile(path.join(RENDERER_DIST, "index.html"));
+  }
 }
-let n = null;
-function R() {
-  const i = o.join(process.env.VITE_PUBLIC, "electron-vite.svg"), a = h.createFromPath(i).resize({ width: 16, height: 16 });
-  n = new _(a), n.setToolTip("🍅 番茄钟");
-  const l = v.buildFromTemplate([
+let tray = null;
+function createTray() {
+  const iconPath = path.join(process.env.VITE_PUBLIC, "icon.ico");
+  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  tray.setToolTip("🍅 番茄钟");
+  const contextMenu = Menu.buildFromTemplate([
     {
       label: "显示窗口",
-      click: () => e == null ? void 0 : e.show()
+      click: () => win == null ? void 0 : win.show()
     },
     {
       label: "退出",
       click: () => {
-        d = !0, t.quit();
+        isQuitting = true;
+        app.quit();
       }
     }
   ]);
-  n.setContextMenu(l), n.on("double-click", () => {
-    e == null || e.show();
+  tray.setContextMenu(contextMenu);
+  tray.on("double-click", () => {
+    win == null ? void 0 : win.show();
   });
 }
-t.on("window-all-closed", () => {
+app.on("window-all-closed", () => {
 });
-t.on("before-quit", () => {
-  d = !0, n = null;
+app.on("before-quit", () => {
+  isQuitting = true;
+  tray = null;
 });
-t.on("activate", () => {
-  r.getAllWindows().length === 0 && u();
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
 });
-t.setAppUserModelId("com.pomodoro.timer");
-s.on("show-notification", (i, { title: a, body: l }) => {
-  const [m] = r.getAllWindows();
-  m && m.webContents.executeJavaScript(`new Notification('${a}', { body: '${l}' })`);
+app.setAppUserModelId("com.pomodoro.timer");
+ipcMain.on("show-notification", (_event, { title, body }) => {
+  const [win2] = BrowserWindow.getAllWindows();
+  if (win2) {
+    win2.webContents.executeJavaScript(`new Notification('${title}', { body: '${body}' })`);
+  }
 });
-s.on("window-minimize", () => e == null ? void 0 : e.minimize());
-s.on("window-maximize", () => {
-  e != null && e.isMaximized() ? e.unmaximize() : e == null || e.maximize();
+ipcMain.on("window-minimize", () => win == null ? void 0 : win.minimize());
+ipcMain.on("window-maximize", () => {
+  if (win == null ? void 0 : win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win == null ? void 0 : win.maximize();
+  }
 });
-s.on("window-close", () => e == null ? void 0 : e.close());
-t.whenReady().then(() => {
-  u(), R();
+ipcMain.on("window-close", () => win == null ? void 0 : win.close());
+app.whenReady().then(() => {
+  createWindow();
+  createTray();
 });
 export {
-  E as MAIN_DIST,
-  f as RENDERER_DIST,
-  c as VITE_DEV_SERVER_URL
+  MAIN_DIST,
+  RENDERER_DIST,
+  VITE_DEV_SERVER_URL
 };

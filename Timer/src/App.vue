@@ -19,7 +19,7 @@
       :break-time="Math.floor(BREAK_TIME / 600)"
       @save="(w, b) => updateTimes(w * 600, b * 600)" />
     <TimerStatus :status="status" :is-running="isRunning"/>
-    <TimerDisplay :seconds="secondLeft"/>
+    <TimerDisplay :seconds="secondLeft" :total="status === 'work' ? WORK_TIME : BREAK_TIME"/>
 
     <TimerControls
       :is-running = "isRunning"
