@@ -1,6 +1,7 @@
 <script setup lang="ts">
 
 import { ref, onMounted, onUnmounted } from 'vue'
+import { ElMessageBox } from 'element-plus'
 
 const isMaximized = ref (false)
 
@@ -22,15 +23,42 @@ function maximize(){
     window.ipcRenderer.send('window-maximize')
 }
 
-function closeWin(){
-    window.ipcRenderer.send('window-close')
+async function closeWin(){
+    const action = localStorage.getItem('closeAction') || 'ask'
+
+    if (action === 'hide'){
+        window.ipcRenderer.send('window-hide')
+        return
+    }
+
+    if (action === 'quit'){
+        window.ipcRenderer.send('window-close')
+        return
+    }
+
+    try {
+        await ElMessageBox.confirm(
+            '关闭后程序将最小化到系统托盘，继续在后台运行。',
+            '🍅Timer',{
+                confirmButtonText:'最小化到托盘',
+                cancelButtonText:'退出程序',
+                type:'info',
+                distinguishCancelAndClose: true
+            }
+        )
+        window.ipcRenderer.send('window-hide')
+    } catch (action) {
+        if (action === 'cancel') {
+            window.ipcRenderer.send('window-close')
+        }
+    }
 }
 
 </script>
 
 <template>
     <div class="title-bar">
-    <div class="drag-region">🍅 Timer</div>
+    <div class="drag-region">🍅Timer</div>
     <div class="window-controls">
         <el-button @click="minimize" text>─</el-button>
     <el-button @click="maximize" text>{{ isMaximized ? '❐' : '□' }}</el-button>

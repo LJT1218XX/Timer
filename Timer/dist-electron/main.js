@@ -12,6 +12,7 @@ let isQuitting = false;
 function createWindow() {
   win = new BrowserWindow({
     frame: false,
+    title: "🍅Timer",
     icon: path.join(process.env.VITE_PUBLIC, "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname$1, "preload.mjs")
@@ -40,7 +41,7 @@ function createTray() {
   const iconPath = path.join(process.env.VITE_PUBLIC, "icon.ico");
   const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
   tray = new Tray(icon);
-  tray.setToolTip("🍅 番茄钟");
+  tray.setToolTip("🍅Timer");
   const contextMenu = Menu.buildFromTemplate([
     {
       label: "显示窗口",
@@ -70,7 +71,6 @@ app.on("activate", () => {
     createWindow();
   }
 });
-app.setAppUserModelId("com.pomodoro.timer");
 ipcMain.on("show-notification", (_event, { title, body }) => {
   const [win2] = BrowserWindow.getAllWindows();
   if (win2) {
@@ -78,6 +78,7 @@ ipcMain.on("show-notification", (_event, { title, body }) => {
   }
 });
 ipcMain.on("window-minimize", () => win == null ? void 0 : win.minimize());
+ipcMain.on("window-hide", () => win == null ? void 0 : win.hide());
 ipcMain.on("window-maximize", () => {
   if (win == null ? void 0 : win.isMaximized()) {
     win.unmaximize();
@@ -85,8 +86,12 @@ ipcMain.on("window-maximize", () => {
     win == null ? void 0 : win.maximize();
   }
 });
-ipcMain.on("window-close", () => win == null ? void 0 : win.close());
+ipcMain.on("window-close", () => {
+  isQuitting = true;
+  app.quit();
+});
 app.whenReady().then(() => {
+  app.setAppUserModelId("com.pomodoro.timer");
   createWindow();
   createTray();
 });

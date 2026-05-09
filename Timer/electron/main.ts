@@ -29,6 +29,7 @@ let isQuitting = false
 function createWindow() {
   win = new BrowserWindow({
     frame: false,
+    title: '🍅Timer',
     icon: path.join(process.env.VITE_PUBLIC, 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
@@ -69,7 +70,7 @@ function createTray(){
   const icon = nativeImage.createFromPath(iconPath).resize({width: 16, height: 16})
 
   tray = new Tray(icon)
-  tray.setToolTip('🍅 番茄钟')
+  tray.setToolTip('🍅Timer')
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -110,7 +111,6 @@ app.on('activate', () => {
     createWindow()
   }
 })
-app.setAppUserModelId('com.pomodoro.timer')
 
 ipcMain.on('show-notification', (_event, { title, body }) => {
   const [win] = BrowserWindow.getAllWindows()
@@ -120,6 +120,7 @@ ipcMain.on('show-notification', (_event, { title, body }) => {
 })
 
 ipcMain.on('window-minimize', ()=> win?.minimize())
+ipcMain.on('window-hide', ()=> win?.hide())
 ipcMain.on('window-maximize', ()=> {
   if (win?.isMaximized()){
     win.unmaximize()
@@ -127,10 +128,14 @@ ipcMain.on('window-maximize', ()=> {
     win?.maximize()
   }
 })
-ipcMain.on('window-close', ()=> win?.close())
+ipcMain.on('window-close', ()=> {
+  isQuitting = true
+  app.quit()
+})
 
 
 app.whenReady().then(() =>{
+  app.setAppUserModelId('com.pomodoro.timer')
   createWindow()
   createTray()
 })
